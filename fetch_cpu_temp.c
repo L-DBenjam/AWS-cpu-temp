@@ -14,7 +14,7 @@
 #define HOST_ADDRESS_SIZE 255
 
 //IoT_Error_t aws_iot_mqtt_publish(AWS_IoT_Client *pClient, const char *pTopicName, uint16_t topicNameLen, IoT_Publish_Message_Params *pParams);
-
+#define topic_pub "PineTemp/sub"
 
 /**
  * @brief Default cert location
@@ -124,7 +124,7 @@ void parseInputArgsForConnectParams(int argc, char **argv)
 int main(int argc, char **argv) 
 {
 	bool infinitePublishFlag = true;
-
+	char nowtime[1000];
 	char rootCA[PATH_MAX + 1];
 	char clientCRT[PATH_MAX + 1];
 	char clientKey[PATH_MAX + 1];
@@ -207,7 +207,7 @@ int main(int argc, char **argv)
 	}
 
 	IOT_INFO("Subscribing...");
-	rc = aws_iot_mqtt_subscribe(&client, "PineTemp/sub", 12, QOS0, iot_subscribe_callback_handler, NULL);
+	rc = aws_iot_mqtt_subscribe(&client, topic_pub, 12, QOS0, iot_subscribe_callback_handler, NULL);
 	if(SUCCESS != rc) 
     {
 		IOT_ERROR("Error subscribing : %d ", rc);
@@ -235,7 +235,13 @@ int main(int argc, char **argv)
 		fscanf(fp, "%f", &temp);
 		fclose(fp);
 		finaltemp = temp / 1000;//** LD mod
-		time(&t);
+		
+		time_t t = time(NULL);
+    	struct tm * p = localtime(&t);
+
+    	strftime(nowtime, 1000, "%B %d %Y %X", p);
+
+        sprintf(cPayload,"{\n" "\"timestamp\" :" "\"%s\",\n" "\"temperature\" :" "\"%f\"\n}",nowtime,finaltemp);
 
 		//Max time the yield function will wait for read messages
 		rc = aws_iot_mqtt_yield(&client, 100);
@@ -245,11 +251,8 @@ int main(int argc, char **argv)
 			continue;
 		}
 		
-		// IOT_INFO("-->sleep");
-		// sleep(1);
-		sprintf(cPayload, "\ntimestamp : %stemperature : %f ", ctime(&t), finaltemp);
 		paramsQOS0.payloadLen = strlen(cPayload);
-		rc = aws_iot_mqtt_publish(&client, "PineTemp/sub", 12, &paramsQOS0);
+		rc = aws_iot_mqtt_publish(&client, topic_pub, 12, &paramsQOS0);
 		if(publishCount > 0) 
         {
 			publishCount--;
@@ -261,25 +264,7 @@ int main(int argc, char **argv)
 		}
 
 		IOT_INFO("-->sleep");
-		sleep(2);
-
-		// fp = fopen(file_name, "r"); //** LD mod
-		// fscanf(fp, "%f", &temp);
-		// fclose(fp);
-		// finaltemp = temp / 1000;//** LD mod
-
-		// sprintf(cPayload, "%s : %f ", "Temperature Pine64", finaltemp);
-		// paramsQOS1.payloadLen = strlen(cPayload);
-		// rc = aws_iot_mqtt_publish(&client, "PineCPUtemp", 11, &paramsQOS1);
-		// if (rc == MQTT_REQUEST_TIMEOUT_ERROR) 
-        // {
-		// 	IOT_WARN("QOS1 publish ack not received.\n");
-		// 	rc = SUCCESS;
-		// }
-		// if(publishCount > 0) 
-        // {
-		// 	publishCount--;
-		// }
+		sleep(30);
 	}
 
 	// Wait for all the messages to be received
