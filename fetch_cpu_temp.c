@@ -264,7 +264,7 @@ int main(int argc, char **argv)
 		}
 
 		IOT_INFO("-->sleep");
-		sleep(30);
+		sleep(60);
 	}
 
 	// Wait for all the messages to be received
